@@ -1091,35 +1091,39 @@
     }
 
     function renderOverallRisk(points, alerts) {
-      const scores = points.map(p => riskValue(p.risk));
-      let avg = scores.reduce((a, b) => a + b, 0) / Math.max(scores.length, 1);
-      const max = Math.max(...scores, 0);
+       const scores = points.map(p =>
+    numericRiskScore(p.weatherCode, p.precipProb, p.wind)
+  );
 
-      if (alerts.length > 0) avg += 1.2;
+  const avg = scores.reduce((a, b) => a + b, 0) / scores.length;
+  const max = Math.max(...scores);
 
-      const overall = Math.min(10, Math.round(avg));
-      overallScoreEl.textContent = `${overall}/10`;
+  const overall = Math.round(avg);
 
-      if (max >= 10 && avg >= 7) {
-        overallLabelEl.textContent = "Extreme route conditions detected";
-        overallNoteEl.textContent = "Severe hazards appear along the route, including conditions that may make travel unsafe.";
-        warningBoxEl.className = "warning-box danger";
-        warningTextEl.textContent = "DO NOT TRAVEL";
-        warningSubEl.textContent = "High-impact weather appears along this route. Delay the trip or choose a safer time.";
-      } else if (max >= 10 || avg >= 5.5) {
-        overallLabelEl.textContent = "High commute risk";
-        overallNoteEl.textContent = "Hazardous conditions appear on one or more parts of the route. Use caution and monitor updates.";
-        warningBoxEl.className = "warning-box caution";
-        warningTextEl.textContent = "TRAVEL WITH CAUTION";
-        warningSubEl.textContent = "Weather hazards are likely on this commute. Expect delays and possible unsafe segments.";
-      } else {
-        overallLabelEl.textContent = "Lower commute risk";
-        overallNoteEl.textContent = "No major route hazards are dominating the trip at this time, though conditions can still change.";
-        warningBoxEl.className = "warning-box safe";
-        warningTextEl.textContent = "Safe to travel";
-        warningSubEl.textContent = "No major weather-related route hazards are currently dominating this commute.";
-      }
-    }
+  overallScoreEl.textContent = `${overall}/10`;
+
+  // SPC / alerts override (this is why alerts exists)
+  const hasDangerAlert = alerts && alerts.length > 0;
+
+  if (hasDangerAlert || overall >= 7 || max >= 9) {
+    overallLabelEl.textContent = "Extreme route conditions detected";
+    warningBoxEl.className = "warning-box danger";
+    warningTextEl.textContent = "DO NOT TRAVEL";
+    warningSubEl.textContent = "Severe weather or warnings active along route.";
+  }
+  else if (overall >= 4 || max >= 7) {
+    overallLabelEl.textContent = "Moderate to high commute risk";
+    warningBoxEl.className = "warning-box caution";
+    warningTextEl.textContent = "TRAVEL WITH CAUTION";
+    warningSubEl.textContent = "Hazards possible along parts of route.";
+  }
+  else {
+    overallLabelEl.textContent = "Low commute risk";
+    warningBoxEl.className = "warning-box safe";
+    warningTextEl.textContent = "Safe to travel";
+    warningSubEl.textContent = "No major hazards detected.";
+  }
+}
 
     async function analyzeCommute() {
       const startInput = document.getElementById("start").value.trim();
