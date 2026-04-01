@@ -7,14 +7,14 @@
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <style>
     :root {
-      --bg1: #14004a;
-      --bg2: #38158f;
-      --bg3: #6c2fd0;
-      --bg4: #b53fd0;
+      --bg1: #12003f;
+      --bg2: #34127f;
+      --bg3: #6d2fd1;
+      --bg4: #b645cb;
 
       --card: rgba(255, 255, 255, 0.12);
-      --card-2: rgba(255, 255, 255, 0.10);
-      --card-border: rgba(255, 255, 255, 0.18);
+      --card2: rgba(255, 255, 255, 0.10);
+      --cardBorder: rgba(255, 255, 255, 0.18);
 
       --text: #ffffff;
       --muted: rgba(255,255,255,0.78);
@@ -30,9 +30,9 @@
       --road: #0b1d47;
 
       --shadow: 0 20px 50px rgba(17, 6, 45, 0.34);
-      --radius-xl: 30px;
-      --radius-lg: 24px;
-      --radius-md: 18px;
+      --r-xl: 30px;
+      --r-lg: 24px;
+      --r-md: 18px;
     }
 
     * { box-sizing: border-box; }
@@ -43,15 +43,15 @@
       color: var(--text);
       min-height: 100vh;
       background:
-        radial-gradient(circle at 10% 12%, rgba(255,255,255,0.18), transparent 18%),
+        radial-gradient(circle at 10% 10%, rgba(255,255,255,0.18), transparent 18%),
         radial-gradient(circle at 88% 8%, rgba(255,255,255,0.12), transparent 16%),
-        radial-gradient(circle at 52% 100%, rgba(255,255,255,0.10), transparent 24%),
-        linear-gradient(180deg, var(--bg1) 0%, var(--bg2) 28%, var(--bg3) 68%, var(--bg4) 100%);
+        radial-gradient(circle at 50% 100%, rgba(255,255,255,0.09), transparent 24%),
+        linear-gradient(180deg, var(--bg1) 0%, var(--bg2) 26%, var(--bg3) 68%, var(--bg4) 100%);
       padding: 24px;
     }
 
     .app {
-      width: min(1350px, 100%);
+      width: min(1380px, 100%);
       margin: 0 auto;
     }
 
@@ -69,8 +69,8 @@
     }
 
     .brand-mark {
-      width: 70px;
-      height: 70px;
+      width: 72px;
+      height: 72px;
       border-radius: 22px;
       background: rgba(255,255,255,0.10);
       border: 1px solid rgba(255,255,255,0.16);
@@ -82,17 +82,11 @@
       flex-shrink: 0;
     }
 
-    .brand-text {
-      display: flex;
-      flex-direction: column;
-      gap: 3px;
-    }
-
     .brand-title {
       font-size: 2rem;
       font-weight: 900;
-      letter-spacing: -0.03em;
       line-height: 1;
+      letter-spacing: -0.03em;
     }
 
     .brand-title .cast {
@@ -102,18 +96,22 @@
     .brand-sub {
       color: var(--muted);
       font-size: 0.95rem;
+      margin-top: 4px;
+    }
+
+    .hero, .card {
+      background: linear-gradient(180deg, rgba(255,255,255,0.14), rgba(255,255,255,0.07));
+      border: 1px solid var(--cardBorder);
+      backdrop-filter: blur(18px);
+      box-shadow: var(--shadow);
+      border-radius: var(--r-xl);
     }
 
     .hero {
-      position: relative;
-      overflow: hidden;
-      border-radius: var(--radius-xl);
       padding: 30px;
-      background: linear-gradient(180deg, rgba(255,255,255,0.14), rgba(255,255,255,0.07));
-      border: 1px solid var(--card-border);
-      backdrop-filter: blur(18px);
-      box-shadow: var(--shadow);
       margin-bottom: 18px;
+      overflow: hidden;
+      position: relative;
     }
 
     .hero::before {
@@ -121,9 +119,9 @@
       position: absolute;
       width: 280px;
       height: 280px;
+      border-radius: 50%;
       right: -90px;
       top: -90px;
-      border-radius: 50%;
       background: rgba(255,255,255,0.12);
       filter: blur(10px);
       pointer-events: none;
@@ -151,32 +149,25 @@
       margin: 14px 0 0;
       color: var(--muted);
       font-size: 1.05rem;
-      max-width: 700px;
       line-height: 1.45;
+      max-width: 720px;
     }
 
     .hero-logo-panel {
+      min-height: 240px;
       display: flex;
       justify-content: center;
       align-items: center;
-      min-height: 240px;
       background: rgba(255,255,255,0.08);
       border: 1px solid rgba(255,255,255,0.15);
       border-radius: 26px;
       padding: 20px;
     }
 
-    .card {
-      background: var(--card);
-      border: 1px solid var(--card-border);
-      backdrop-filter: blur(18px);
-      border-radius: var(--radius-lg);
-      box-shadow: var(--shadow);
-      padding: 20px;
-    }
-
     .controls {
+      padding: 20px;
       margin-bottom: 18px;
+      border-radius: var(--r-lg);
     }
 
     .controls-grid {
@@ -184,6 +175,23 @@
       grid-template-columns: 1fr 1fr 1fr auto;
       gap: 14px;
       align-items: end;
+    }
+
+    .option-row {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-top: 14px;
+    }
+
+    .pill {
+      padding: 8px 12px;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.10);
+      border: 1px solid rgba(255,255,255,0.14);
+      font-size: 0.8rem;
+      font-weight: 800;
+      color: var(--muted);
     }
 
     label {
@@ -194,7 +202,7 @@
       font-weight: 700;
     }
 
-    input {
+    input, select {
       width: 100%;
       border: none;
       outline: none;
@@ -244,13 +252,23 @@
       margin-top: 10px;
     }
 
-    .hidden {
-      display: none;
-    }
+    .hidden { display: none; }
 
     .results-grid {
       display: grid;
       gap: 18px;
+    }
+
+    .card {
+      padding: 20px;
+      border-radius: var(--r-lg);
+    }
+
+    .section-title {
+      margin: 0 0 12px;
+      font-size: 1rem;
+      font-weight: 900;
+      letter-spacing: -0.02em;
     }
 
     .summary-grid {
@@ -262,7 +280,7 @@
     .stat {
       padding: 14px;
       border-radius: 18px;
-      background: var(--card-2);
+      background: var(--card2);
       border: 1px solid rgba(255,255,255,0.12);
     }
 
@@ -284,11 +302,9 @@
       display: grid;
       grid-template-columns: 1.1fr 1fr;
       gap: 16px;
-      align-items: stretch;
     }
 
-    .risk-box,
-    .warning-box {
+    .risk-box, .warning-box {
       padding: 18px;
       border-radius: 22px;
       background: rgba(255,255,255,0.10);
@@ -359,11 +375,30 @@
       line-height: 1.35;
     }
 
-    .section-title {
-      margin: 0 0 12px;
+    .extra-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 12px;
+    }
+
+    .mini-card {
+      padding: 14px;
+      border-radius: 18px;
+      background: rgba(255,255,255,0.10);
+      border: 1px solid rgba(255,255,255,0.12);
+    }
+
+    .mini-title {
+      font-size: 0.8rem;
+      color: var(--muted);
+      font-weight: 700;
+      margin-bottom: 6px;
+    }
+
+    .mini-value {
       font-size: 1rem;
-      font-weight: 900;
-      letter-spacing: -0.02em;
+      font-weight: 800;
+      line-height: 1.3;
     }
 
     #map {
@@ -437,40 +472,24 @@
       border: 1px solid rgba(255,103,103,0.30);
     }
 
-    @media (max-width: 980px) {
+    @media (max-width: 1080px) {
       .hero-grid,
       .risk-panel,
       .controls-grid,
-      .summary-grid {
+      .summary-grid,
+      .extra-grid {
         grid-template-columns: 1fr;
       }
 
-      #map {
-        height: 420px;
-      }
+      #map { height: 420px; }
     }
 
     @media (max-width: 650px) {
-      body {
-        padding: 12px;
-      }
-
-      .hero,
-      .card {
-        padding: 16px;
-      }
-
-      .timeline-item {
-        grid-template-columns: 1fr;
-      }
-
-      #map {
-        height: 330px;
-      }
-
-      .brand-title {
-        font-size: 1.6rem;
-      }
+      body { padding: 12px; }
+      .hero, .card, .controls { padding: 16px; }
+      .timeline-item { grid-template-columns: 1fr; }
+      #map { height: 330px; }
+      .brand-title { font-size: 1.6rem; }
     }
   </style>
 </head>
@@ -490,7 +509,7 @@
             <path d="M23 49C23 40 31 33 40 33C46 33 51 36 54 41C55 41 56 41 57 41C63 41 68 46 68 52H23V49Z" fill="#EEF4FF"/>
           </svg>
         </div>
-        <div class="brand-text">
+        <div>
           <div class="brand-title">Commute<span class="cast">Cast</span></div>
           <div class="brand-sub">Route weather risk, not just weather.</div>
         </div>
@@ -545,6 +564,13 @@
         </div>
       </div>
 
+      <div class="option-row">
+        <div class="pill">5-mile mode: coming later</div>
+        <div class="pill">Multiple routes: planned</div>
+        <div class="pill">Warnings/SPC layer: planned</div>
+        <div class="pill">Light mode: planned</div>
+      </div>
+
       <div class="note">
         Forecasts are matched to the nearest available forecast hour. Route updates appear every 10 miles and at major route changes.
       </div>
@@ -594,6 +620,24 @@
       </section>
 
       <section class="card">
+        <div class="section-title">Smart Add-ons</div>
+        <div class="extra-grid">
+          <div class="mini-card">
+            <div class="mini-title">Best departure window</div>
+            <div class="mini-value" id="departureAdvice">Coming later</div>
+          </div>
+          <div class="mini-card">
+            <div class="mini-title">Warnings in effect</div>
+            <div class="mini-value" id="warningSummary">Not connected yet</div>
+          </div>
+          <div class="mini-card">
+            <div class="mini-title">Alt route recommendation</div>
+            <div class="mini-value" id="altRouteSummary">Single-route mode only</div>
+          </div>
+        </div>
+      </section>
+
+      <section class="card">
         <div class="section-title">Route Map</div>
         <div id="map"></div>
       </section>
@@ -620,6 +664,9 @@
     const warningBoxEl = document.getElementById("warningBox");
     const warningTextEl = document.getElementById("warningText");
     const warningSubEl = document.getElementById("warningSub");
+    const departureAdviceEl = document.getElementById("departureAdvice");
+    const warningSummaryEl = document.getElementById("warningSummary");
+    const altRouteSummaryEl = document.getElementById("altRouteSummary");
     const analyzeBtn = document.getElementById("analyzeBtn");
 
     let map = null;
@@ -1008,18 +1055,27 @@
         warningBoxEl.className = "warning-box danger";
         warningTextEl.textContent = "DO NOT TRAVEL";
         warningSubEl.textContent = "High-impact weather appears along this route. Delay the trip or choose a safer time.";
+        departureAdviceEl.textContent = "Try delaying 1–3 hours.";
+        warningSummaryEl.textContent = "Connect warnings layer next";
+        altRouteSummaryEl.textContent = "Add multi-route comparison";
       } else if (max >= 10 || avg >= 5.5) {
         overallLabelEl.textContent = "High commute risk";
         overallNoteEl.textContent = "Hazardous conditions appear on one or more parts of the route. Use caution and monitor updates.";
         warningBoxEl.className = "warning-box caution";
         warningTextEl.textContent = "TRAVEL WITH CAUTION";
         warningSubEl.textContent = "Weather hazards are likely on this commute. Expect delays and possible unsafe segments.";
+        departureAdviceEl.textContent = "A later departure may help.";
+        warningSummaryEl.textContent = "Moderate-to-high hazard signal";
+        altRouteSummaryEl.textContent = "Route comparison not enabled";
       } else {
         overallLabelEl.textContent = "Lower commute risk";
         overallNoteEl.textContent = "No major route hazards are dominating the trip at this time, though conditions can still change.";
         warningBoxEl.className = "warning-box safe";
         warningTextEl.textContent = "Safe to travel";
         warningSubEl.textContent = "No major weather-related route hazards are currently dominating this commute.";
+        departureAdviceEl.textContent = "Current departure looks reasonable.";
+        warningSummaryEl.textContent = "No linked warning feed yet";
+        altRouteSummaryEl.textContent = "Single-route mode only";
       }
     }
 
@@ -1111,6 +1167,8 @@
   </script>
 </body>
 </html>
+
+
 
 
 
