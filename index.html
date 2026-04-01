@@ -22,9 +22,9 @@
       --low: #42d67c;
       --moderate: #f4c84d;
       --high: #ff6767;
-      --extreme: #ff2f4d;
 
       --blue: #58b8ff;
+      --blue2: #88d0ff;
       --yellow: #f7c53a;
       --white: #eef4ff;
       --road: #0b1d47;
@@ -177,23 +177,6 @@
       align-items: end;
     }
 
-    .option-row {
-      display: flex;
-      gap: 10px;
-      flex-wrap: wrap;
-      margin-top: 14px;
-    }
-
-    .pill {
-      padding: 8px 12px;
-      border-radius: 999px;
-      background: rgba(255,255,255,0.10);
-      border: 1px solid rgba(255,255,255,0.14);
-      font-size: 0.8rem;
-      font-weight: 800;
-      color: var(--muted);
-    }
-
     label {
       display: block;
       font-size: 0.86rem;
@@ -202,7 +185,7 @@
       font-weight: 700;
     }
 
-    input, select {
+    input {
       width: 100%;
       border: none;
       outline: none;
@@ -377,7 +360,7 @@
 
     .extra-grid {
       display: grid;
-      grid-template-columns: 1fr 1fr 1fr;
+      grid-template-columns: 1fr 1fr;
       gap: 12px;
     }
 
@@ -498,15 +481,16 @@
     <div class="topbar">
       <div class="brand">
         <div class="brand-mark">
-          <svg width="56" height="56" viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <rect x="55" y="20" width="38" height="82" rx="10" transform="skewX(-32)" fill="#58B8FF"/>
-            <path d="M18 95L52 72L84 26L67 26L36 68L18 95Z" fill="#EEF4FF"/>
-            <path d="M56 27L82 27L51 96L25 96L56 27Z" fill="#0B1D47"/>
-            <path d="M49 85H66L58 96H40L49 85Z" fill="#EEF4FF"/>
-            <path d="M59 60H73L66 72H51L59 60Z" fill="#EEF4FF"/>
-            <path d="M68 35H79L73 46H60L68 35Z" fill="#EEF4FF"/>
-            <circle cx="49" cy="34" r="14" fill="#F7C53A"/>
-            <path d="M23 49C23 40 31 33 40 33C46 33 51 36 54 41C55 41 56 41 57 41C63 41 68 46 68 52H23V49Z" fill="#EEF4FF"/>
+          <svg width="56" height="56" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg">
+            <rect x="56" y="18" width="30" height="84" rx="10" transform="skewX(-32)" fill="#58B8FF"/>
+            <rect x="71" y="18" width="16" height="84" rx="8" transform="skewX(-32)" fill="#88D0FF"/>
+            <path d="M18 95L51 74L82 26L67 26L36 69L18 95Z" fill="#EEF4FF"/>
+            <path d="M55 27L78 27L48 96L25 96L55 27Z" fill="#0B1D47"/>
+            <path d="M47 84H61L54 96H39L47 84Z" fill="#EEF4FF"/>
+            <path d="M56 61H69L62 72H49L56 61Z" fill="#EEF4FF"/>
+            <path d="M64 38H74L69 47H58L64 38Z" fill="#EEF4FF"/>
+            <circle cx="45" cy="34" r="13" fill="#F7C53A"/>
+            <path d="M23 48C23 40 30 33 39 33C45 33 50 36 53 41C54 41 55 41 56 41C62 41 67 45 67 52H23V48Z" fill="#EEF4FF"/>
           </svg>
         </div>
         <div>
@@ -519,24 +503,25 @@
     <section class="hero">
       <div class="hero-grid">
         <div>
-          <h1>Smarter Route<br><span class="accent">Weather Risk</span></h1>
+          <h1>Weather Along<br><span class="accent">Your Route</span></h1>
           <p>
-            Check your commute by route, distance, and timing. CommuteCast tracks changing conditions along the drive instead of only showing weather at one point.
+            CommuteCast checks conditions across the full drive instead of only showing weather at one point. See route timing, changing hazards, and whether the trip looks safe.
           </p>
         </div>
 
         <div class="hero-logo-panel">
-          <svg width="100%" height="190" viewBox="0 0 500 220" xmlns="http://www.w3.org/2000/svg">
-            <rect x="195" y="25" width="115" height="155" rx="22" transform="skewX(-30)" fill="#58B8FF"/>
-            <path d="M55 175L150 120L235 35L190 35L107 111L55 175Z" fill="#EEF4FF"/>
-            <path d="M166 36L245 36L163 176L84 176L166 36Z" fill="#0B1D47"/>
-            <path d="M139 149H177L158 176H119L139 149Z" fill="#EEF4FF"/>
-            <path d="M166 92H201L183 118H147L166 92Z" fill="#EEF4FF"/>
-            <path d="M193 47H219L206 66H179L193 47Z" fill="#EEF4FF"/>
-            <circle cx="155" cy="52" r="28" fill="#F7C53A"/>
-            <path d="M94 83C94 66 108 53 126 53C137 53 147 58 153 68C155 67 158 67 161 67C173 67 183 75 183 87H94V83Z" fill="#EEF4FF"/>
-            <text x="285" y="112" fill="white" font-size="42" font-weight="900" font-family="Inter, Arial, sans-serif">Commute</text>
-            <text x="285" y="158" fill="#58B8FF" font-size="42" font-weight="900" font-family="Inter, Arial, sans-serif">Cast</text>
+          <svg width="100%" height="190" viewBox="0 0 540 220" xmlns="http://www.w3.org/2000/svg">
+            <rect x="195" y="25" width="95" height="155" rx="22" transform="skewX(-30)" fill="#58B8FF"/>
+            <rect x="240" y="25" width="42" height="155" rx="16" transform="skewX(-30)" fill="#88D0FF"/>
+            <path d="M55 175L145 122L233 34L192 34L110 112L55 175Z" fill="#EEF4FF"/>
+            <path d="M164 36L240 36L162 176L86 176L164 36Z" fill="#0B1D47"/>
+            <path d="M140 149H175L158 176H121L140 149Z" fill="#EEF4FF"/>
+            <path d="M166 92H199L183 118H148L166 92Z" fill="#EEF4FF"/>
+            <path d="M192 47H216L204 66H179L192 47Z" fill="#EEF4FF"/>
+            <circle cx="150" cy="52" r="26" fill="#F7C53A"/>
+            <path d="M94 82C94 67 106 55 122 55C132 55 141 59 146 68C148 67 151 67 154 67C165 67 174 75 174 87H94V82Z" fill="#EEF4FF"/>
+            <text x="305" y="110" fill="white" font-size="40" font-weight="900" font-family="Inter, Arial, sans-serif">Commute</text>
+            <text x="305" y="155" fill="#58B8FF" font-size="40" font-weight="900" font-family="Inter, Arial, sans-serif">Cast</text>
           </svg>
         </div>
       </div>
@@ -564,15 +549,8 @@
         </div>
       </div>
 
-      <div class="option-row">
-        <div class="pill">5-mile mode: coming later</div>
-        <div class="pill">Multiple routes: planned</div>
-        <div class="pill">Warnings/SPC layer: planned</div>
-        <div class="pill">Light mode: planned</div>
-      </div>
-
       <div class="note">
-        Forecasts are matched to the nearest available forecast hour. Route updates appear every 10 miles and at major route changes.
+        Route updates appear every 5 miles and at major route changes. Departure time is limited to now through the next 14 days.
       </div>
 
       <div id="status" class="status"></div>
@@ -608,7 +586,7 @@
             <div class="risk-title">Commute Risk Score</div>
             <div class="risk-score" id="overallScore">—</div>
             <div class="risk-label" id="overallLabel">Waiting for analysis</div>
-            <div class="note" id="overallNote" style="margin-top:10px;">Your route will be scored from safer to more dangerous based on conditions along the trip.</div>
+            <div class="note" id="overallNote" style="margin-top:10px;">Your route is scored from safer to more dangerous based on conditions across the trip.</div>
           </div>
 
           <div id="warningBox" class="warning-box safe">
@@ -620,19 +598,15 @@
       </section>
 
       <section class="card">
-        <div class="section-title">Smart Add-ons</div>
+        <div class="section-title">Extra Insight</div>
         <div class="extra-grid">
           <div class="mini-card">
-            <div class="mini-title">Best departure window</div>
-            <div class="mini-value" id="departureAdvice">Coming later</div>
+            <div class="mini-title">Best departure time</div>
+            <div class="mini-value" id="departureAdvice">Not calculated yet</div>
           </div>
           <div class="mini-card">
-            <div class="mini-title">Warnings in effect</div>
-            <div class="mini-value" id="warningSummary">Not connected yet</div>
-          </div>
-          <div class="mini-card">
-            <div class="mini-title">Alt route recommendation</div>
-            <div class="mini-value" id="altRouteSummary">Single-route mode only</div>
+            <div class="mini-title">Active weather alerts</div>
+            <div class="mini-value" id="alertsBox">Not connected yet</div>
           </div>
         </div>
       </section>
@@ -665,9 +639,9 @@
     const warningTextEl = document.getElementById("warningText");
     const warningSubEl = document.getElementById("warningSub");
     const departureAdviceEl = document.getElementById("departureAdvice");
-    const warningSummaryEl = document.getElementById("warningSummary");
-    const altRouteSummaryEl = document.getElementById("altRouteSummary");
+    const alertsBoxEl = document.getElementById("alertsBox");
     const analyzeBtn = document.getElementById("analyzeBtn");
+    const departInputEl = document.getElementById("depart");
 
     let map = null;
     let drawnLayers = [];
@@ -778,11 +752,12 @@
       const points = [];
       const totalMiles = metersToMiles(route.distanceMeters);
       let mile = 0;
+      const stepMiles = 5;
 
       while (mile <= totalMiles) {
         const pt = getPointAtDistance(route.geometry, milesToMeters(mile));
         points.push({ ...pt, label: `Mile ${mile}`, kind: "mile" });
-        mile += 10;
+        mile += stepMiles;
       }
 
       const endPoint = getPointAtDistance(route.geometry, route.distanceMeters);
@@ -827,7 +802,7 @@
         .sort((a, b) => a.distanceMeters - b.distanceMeters);
 
       const merged = [];
-      const threshold = milesToMeters(0.5);
+      const threshold = milesToMeters(0.3);
 
       for (const point of sorted) {
         const last = merged[merged.length - 1];
@@ -842,7 +817,7 @@
       const milePoints = merged.filter(p => p.kind === "mile");
       const stepPoints = merged.filter(p => p.kind === "step");
 
-      const maxTotalPoints = 40;
+      const maxTotalPoints = 80;
       const remainingSlots = Math.max(0, maxTotalPoints - milePoints.length);
 
       const selectedSteps = [];
@@ -863,7 +838,7 @@
       if (weatherCache.has(key)) return weatherCache.get(key);
 
       const url =
-        `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&hourly=temperature_2m,precipitation_probability,wind_speed_10m,weather_code&temperature_unit=fahrenheit&wind_speed_unit=mph&timezone=auto&forecast_days=2`;
+        `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&hourly=temperature_2m,precipitation_probability,wind_speed_10m,weather_code&temperature_unit=fahrenheit&wind_speed_unit=mph&timezone=auto&forecast_days=14`;
 
       const res = await fetch(url);
       if (!res.ok) throw new Error("Weather request failed.");
@@ -872,6 +847,18 @@
 
       weatherCache.set(key, data.hourly);
       return data.hourly;
+    }
+
+    async function getNWSAlerts(lat, lon) {
+      try {
+        const url = `https://api.weather.gov/alerts/active?point=${lat},${lon}`;
+        const res = await fetch(url);
+        if (!res.ok) return [];
+        const data = await res.json();
+        return data.features || [];
+      } catch {
+        return [];
+      }
     }
 
     function nearestWeatherIndex(hourly, targetDate) {
@@ -919,10 +906,20 @@
     }
 
     function riskFromWeather(code, precipProb, wind) {
-      const highCodes = [45, 48, 66, 67, 71, 73, 75, 95, 96, 99];
-      const moderateCodes = [51, 53, 55, 61, 63, 65, 80, 81, 82];
-      if (highCodes.includes(code)) return "high";
-      if (moderateCodes.includes(code) || precipProb >= 60 || wind >= 25) return "moderate";
+      let score = 0;
+
+      if ([95,96,99].includes(code)) score += 10;
+      if ([71,73,75].includes(code)) score += 9;
+      if ([66,67].includes(code)) score += 10;
+      if ([80,81,82,65].includes(code)) score += 6;
+      if ([61,63,51,53,55].includes(code)) score += 4;
+      if ([45,48].includes(code)) score += 5;
+
+      score += precipProb * 0.05;
+      score += wind * 0.15;
+
+      if (score >= 9) return "high";
+      if (score >= 5) return "moderate";
       return "low";
     }
 
@@ -1011,9 +1008,9 @@
       points.forEach(point => {
         addLayer(
           L.circleMarker([point.lat, point.lon], {
-            radius: 6,
+            radius: 5,
             color: "#ffffff",
-            weight: 1.5,
+            weight: 1.3,
             fillColor: riskColor(point.risk),
             fillOpacity: 1
           }).bindPopup(
@@ -1041,12 +1038,66 @@
       });
     }
 
-    function renderOverallRisk(points) {
-      const scores = points.map(p => riskValue(p.risk));
-      const avg = scores.reduce((a, b) => a + b, 0) / Math.max(scores.length, 1);
-      const max = Math.max(...scores, 0);
-      const overall = Math.round((avg / 10) * 10);
+    async function renderAlerts(points) {
+      const samplePoints = points.slice(0, 8);
+      const allEvents = [];
 
+      for (const p of samplePoints) {
+        const alerts = await getNWSAlerts(p.lat, p.lon);
+        alerts.forEach(a => {
+          if (a.properties && a.properties.event) allEvents.push(a.properties.event);
+        });
+      }
+
+      const unique = [...new Set(allEvents)];
+      alertsBoxEl.textContent = unique.length ? unique.slice(0, 3).join(", ") : "No active alerts found";
+      return unique;
+    }
+
+    async function optimizeDeparture(route, rawPoints, baseTime) {
+      const offsets = [-120, -60, 0, 60, 120];
+      let best = null;
+
+      for (const offset of offsets) {
+        const testTime = new Date(baseTime.getTime() + offset * 60000);
+        let score = 0;
+
+        for (const p of rawPoints.slice(0, 12)) {
+          const ratio = route.distanceMeters === 0 ? 0 : p.distanceMeters / route.distanceMeters;
+          const eta = new Date(testTime.getTime() + ratio * route.durationSeconds * 1000);
+
+          const weather = await getWeather(p.lat, p.lon);
+          const idx = nearestWeatherIndex(weather, eta);
+
+          const risk = riskFromWeather(
+            weather.weather_code[idx],
+            weather.precipitation_probability[idx] || 0,
+            weather.wind_speed_10m[idx] || 0
+          );
+
+          score += riskValue(risk);
+        }
+
+        if (!best || score < best.score) {
+          best = { time: testTime, score };
+        }
+      }
+
+      if (best) {
+        departureAdviceEl.textContent = `Best near ${formatTime(best.time)}`;
+      } else {
+        departureAdviceEl.textContent = "No better time found";
+      }
+    }
+
+    function renderOverallRisk(points, alerts) {
+      const scores = points.map(p => riskValue(p.risk));
+      let avg = scores.reduce((a, b) => a + b, 0) / Math.max(scores.length, 1);
+      const max = Math.max(...scores, 0);
+
+      if (alerts.length > 0) avg += 1.2;
+
+      const overall = Math.min(10, Math.round(avg));
       overallScoreEl.textContent = `${overall}/10`;
 
       if (max >= 10 && avg >= 7) {
@@ -1055,34 +1106,25 @@
         warningBoxEl.className = "warning-box danger";
         warningTextEl.textContent = "DO NOT TRAVEL";
         warningSubEl.textContent = "High-impact weather appears along this route. Delay the trip or choose a safer time.";
-        departureAdviceEl.textContent = "Try delaying 1–3 hours.";
-        warningSummaryEl.textContent = "Connect warnings layer next";
-        altRouteSummaryEl.textContent = "Add multi-route comparison";
       } else if (max >= 10 || avg >= 5.5) {
         overallLabelEl.textContent = "High commute risk";
         overallNoteEl.textContent = "Hazardous conditions appear on one or more parts of the route. Use caution and monitor updates.";
         warningBoxEl.className = "warning-box caution";
         warningTextEl.textContent = "TRAVEL WITH CAUTION";
         warningSubEl.textContent = "Weather hazards are likely on this commute. Expect delays and possible unsafe segments.";
-        departureAdviceEl.textContent = "A later departure may help.";
-        warningSummaryEl.textContent = "Moderate-to-high hazard signal";
-        altRouteSummaryEl.textContent = "Route comparison not enabled";
       } else {
         overallLabelEl.textContent = "Lower commute risk";
         overallNoteEl.textContent = "No major route hazards are dominating the trip at this time, though conditions can still change.";
         warningBoxEl.className = "warning-box safe";
         warningTextEl.textContent = "Safe to travel";
         warningSubEl.textContent = "No major weather-related route hazards are currently dominating this commute.";
-        departureAdviceEl.textContent = "Current departure looks reasonable.";
-        warningSummaryEl.textContent = "No linked warning feed yet";
-        altRouteSummaryEl.textContent = "Single-route mode only";
       }
     }
 
     async function analyzeCommute() {
       const startInput = document.getElementById("start").value.trim();
       const endInput = document.getElementById("end").value.trim();
-      const departInput = document.getElementById("depart").value;
+      const departInput = departInputEl.value;
 
       if (!startInput || !endInput || !departInput) {
         setStatus("Fill in start location, end location, and departure time.");
@@ -1137,6 +1179,12 @@
           })
         );
 
+        setStatus("Checking alerts...");
+        const alerts = await renderAlerts(pointsWithWeather);
+
+        setStatus("Optimizing departure...");
+        await optimizeDeparture(route, rawPoints, departDate);
+
         startSummaryEl.textContent = startInput;
         endSummaryEl.textContent = endInput;
         distanceSummaryEl.textContent = `${metersToMiles(route.distanceMeters).toFixed(1)} mi`;
@@ -1148,7 +1196,7 @@
         fitMapToRoute(route.geometry);
         drawRoute(route.geometry, pointsWithWeather);
         renderTimeline(pointsWithWeather);
-        renderOverallRisk(pointsWithWeather);
+        renderOverallRisk(pointsWithWeather, alerts);
 
         setStatus("Done.");
       } catch (err) {
@@ -1159,14 +1207,24 @@
       }
     }
 
-    analyzeBtn.addEventListener("click", analyzeCommute);
+    function setDepartureLimits() {
+      const now = new Date();
+      const future = new Date(now.getTime() + 14 * 24 * 60 * 60 * 1000);
 
-    const now = new Date();
-    now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
-    document.getElementById("depart").value = now.toISOString().slice(0, 16);
+      const localNow = new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+      const localFuture = new Date(future.getTime() - future.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+
+      departInputEl.min = localNow;
+      departInputEl.max = localFuture;
+      departInputEl.value = localNow;
+    }
+
+    analyzeBtn.addEventListener("click", analyzeCommute);
+    setDepartureLimits();
   </script>
 </body>
 </html>
+
 
 
 
