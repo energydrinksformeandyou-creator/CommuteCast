@@ -32,7 +32,6 @@
       --shadow: 0 20px 50px rgba(17, 6, 45, 0.34);
       --r-xl: 30px;
       --r-lg: 24px;
-      --r-md: 18px;
     }
 
     * { box-sizing: border-box; }
@@ -360,7 +359,7 @@
 
     .extra-grid {
       display: grid;
-      grid-template-columns: 1fr 1fr;
+      grid-template-columns: 1fr 1fr 1fr;
       gap: 12px;
     }
 
@@ -382,6 +381,22 @@
       font-size: 1rem;
       font-weight: 800;
       line-height: 1.3;
+    }
+
+    .leave-times {
+      display: grid;
+      gap: 8px;
+    }
+
+    .leave-time-row {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 10px 12px;
+      border-radius: 14px;
+      background: rgba(255,255,255,0.08);
+      border: 1px solid rgba(255,255,255,0.10);
+      font-size: 0.9rem;
     }
 
     #map {
@@ -473,6 +488,7 @@
       .timeline-item { grid-template-columns: 1fr; }
       #map { height: 330px; }
       .brand-title { font-size: 1.6rem; }
+      .leave-time-row { flex-direction: column; }
     }
   </style>
 </head>
@@ -505,7 +521,7 @@
         <div>
           <h1>Weather Along<br><span class="accent">Your Route</span></h1>
           <p>
-            CommuteCast checks conditions across the full drive instead of only showing weather at one point. See route timing, changing hazards, and whether the trip looks safe.
+            CommuteCast checks conditions across the full drive instead of only showing weather at one point. See route timing, changing hazards, and when it is safer to leave.
           </p>
         </div>
 
@@ -598,6 +614,11 @@
       </section>
 
       <section class="card">
+        <div class="section-title">Best Leave Times</div>
+        <div id="bestLeaveTimes" class="leave-times"></div>
+      </section>
+
+      <section class="card">
         <div class="section-title">Extra Insight</div>
         <div class="extra-grid">
           <div class="mini-card">
@@ -607,6 +628,10 @@
           <div class="mini-card">
             <div class="mini-title">Active weather alerts</div>
             <div class="mini-value" id="alertsBox">Not connected yet</div>
+          </div>
+          <div class="mini-card">
+            <div class="mini-title">Worst segment</div>
+            <div class="mini-value" id="worstSegmentBox">Not calculated yet</div>
           </div>
         </div>
       </section>
@@ -640,6 +665,8 @@
     const warningSubEl = document.getElementById("warningSub");
     const departureAdviceEl = document.getElementById("departureAdvice");
     const alertsBoxEl = document.getElementById("alertsBox");
+    const worstSegmentBoxEl = document.getElementById("worstSegmentBox");
+    const bestLeaveTimesEl = document.getElementById("bestLeaveTimes");
     const analyzeBtn = document.getElementById("analyzeBtn");
     const departInputEl = document.getElementById("depart");
 
@@ -681,6 +708,15 @@
 
     function formatTime(date) {
       return new Date(date).toLocaleTimeString([], {
+        hour: "numeric",
+        minute: "2-digit"
+      });
+    }
+
+    function formatDateTimeShort(date) {
+      return new Date(date).toLocaleString([], {
+        month: "short",
+        day: "numeric",
         hour: "numeric",
         minute: "2-digit"
       });
@@ -882,20 +918,20 @@
         1: "Mainly clear",
         2: "Partly cloudy",
         3: "Overcast",
-        62: "Fog",
-        60: "Fog",
-        21: "Drizzle",
-        23: "Drizzle",
-        35: "Heavy drizzle",
-        41: "Light rain",
-        53: "Rain",
+        45: "Fog",
+        48: "Fog",
+        51: "Drizzle",
+        53: "Drizzle",
+        55: "Heavy drizzle",
+        61: "Light rain",
+        63: "Rain",
         65: "Heavy rain",
-        85: "Freezing rain",
-        85: "Freezing rain",
+        66: "Freezing rain",
+        67: "Freezing rain",
         71: "Light snow",
         73: "Snow",
-        90: "Heavy snow",
-        60: "Rain showers",
+        75: "Heavy snow",
+        80: "Rain showers",
         81: "Heavy showers",
         82: "Violent showers",
         95: "Thunderstorm",
@@ -905,21 +941,26 @@
       return labels[code] || "Weather";
     }
 
+    function numericRiskScore(code, precipProb, wind) {
+      let score = 1;
+
+      if ([95, 96, 99].includes(code)) score += 7;
+      if ([71, 73, 75].includes(code)) score += 6;
+      if ([66, 67].includes(code)) score += 7;
+      if ([80, 81, 82, 65].includes(code)) score += 4;
+      if ([61, 63, 51, 53, 55].includes(code)) score += 2;
+      if ([45, 48].includes(code)) score += 3;
+
+      score += (precipProb || 0) * 0.03;
+      score += (wind || 0) * 0.08;
+
+      return Math.max(1, Math.min(10, Math.round(score)));
+    }
+
     function riskFromWeather(code, precipProb, wind) {
-      let score = 0;
-
-      if ([95,96,99].includes(code)) score += 10;
-      if ([71,73,75].includes(code)) score += 9;
-      if ([66,67].includes(code)) score += 10;
-      if ([80,81,82,65].includes(code)) score += 6;
-      if ([61,63,51,53,55].includes(code)) score += 4;
-      if ([45,48].includes(code)) score += 5;
-
-      score += precipProb * 0.05;
-      score += wind * 0.15;
-
-      if (score >= 9) return "high";
-      if (score >= 5) return "moderate";
+      const score = numericRiskScore(code, precipProb, wind);
+      if (score >= 7) return "high";
+      if (score >= 4) return "moderate";
       return "low";
     }
 
@@ -931,12 +972,6 @@
       if (risk === "high") return "#ff6767";
       if (risk === "moderate") return "#f4c84d";
       return "#42d67c";
-    }
-
-    function riskValue(risk) {
-      if (risk === "high") return 10;
-      if (risk === "moderate") return 6;
-      return 2;
     }
 
     function buildForecastText(point) {
@@ -1054,70 +1089,113 @@
       return unique;
     }
 
-    async function optimizeDeparture(route, rawPoints, baseTime) {
-      const offsets = [-120, -60, 0, 60, 120];
-      let best = null;
-
-      for (const offset of offsets) {
-        const testTime = new Date(baseTime.getTime() + offset * 60000);
-        let score = 0;
-
-        for (const p of rawPoints.slice(0, 12)) {
-          const ratio = route.distanceMeters === 0 ? 0 : p.distanceMeters / route.distanceMeters;
-          const eta = new Date(testTime.getTime() + ratio * route.durationSeconds * 1000);
-
-          const weather = await getWeather(p.lat, p.lon);
-          const idx = nearestWeatherIndex(weather, eta);
-
-          const risk = riskFromWeather(
-            weather.weather_code[idx],
-            weather.precipitation_probability[idx] || 0,
-            weather.wind_speed_10m[idx] || 0
-          );
-
-          score += riskValue(risk);
-        }
-
-        if (!best || score < best.score) {
-          best = { time: testTime, score };
-        }
-      }
-
-      if (best) {
-        departureAdviceEl.textContent = `Best near ${formatTime(best.time)}`;
-      } else {
-        departureAdviceEl.textContent = "No better time found";
-      }
-    }
-
     function renderOverallRisk(points, alerts) {
-      const scores = points.map(p => riskValue(p.risk));
+      const scores = points.map(p =>
+        numericRiskScore(p.weatherCode, p.precipProb, p.wind)
+      );
+
       let avg = scores.reduce((a, b) => a + b, 0) / Math.max(scores.length, 1);
       const max = Math.max(...scores, 0);
 
-      if (alerts.length > 0) avg += 1.2;
+      if (alerts.length > 0) avg += 0.8;
 
       const overall = Math.min(10, Math.round(avg));
       overallScoreEl.textContent = `${overall}/10`;
 
-      if (max >= 10 && avg >= 7) {
+      if (overall >= 7 || max >= 9) {
         overallLabelEl.textContent = "Extreme route conditions detected";
         overallNoteEl.textContent = "Severe hazards appear along the route, including conditions that may make travel unsafe.";
         warningBoxEl.className = "warning-box danger";
         warningTextEl.textContent = "DO NOT TRAVEL";
-        warningSubEl.textContent = "High-impact weather appears along this route. Delay the trip or choose a safer time.";
-      } else if (max >= 10 || avg >= 5.5) {
-        overallLabelEl.textContent = "High commute risk";
-        overallNoteEl.textContent = "Hazardous conditions appear on one or more parts of the route. Use caution and monitor updates.";
+        warningSubEl.textContent = "Dangerous conditions are expected along this route.";
+      } else if (overall >= 4 || max >= 7) {
+        overallLabelEl.textContent = "Moderate to high commute risk";
+        overallNoteEl.textContent = "Some parts of the route may be hazardous. Use caution and monitor updates.";
         warningBoxEl.className = "warning-box caution";
         warningTextEl.textContent = "TRAVEL WITH CAUTION";
-        warningSubEl.textContent = "Weather hazards are likely on this commute. Expect delays and possible unsafe segments.";
+        warningSubEl.textContent = "Expect possible delays or localized hazards.";
       } else {
-        overallLabelEl.textContent = "Lower commute risk";
-        overallNoteEl.textContent = "No major route hazards are dominating the trip at this time, though conditions can still change.";
+        overallLabelEl.textContent = "Low commute risk";
+        overallNoteEl.textContent = "No major hazards detected across the route.";
         warningBoxEl.className = "warning-box safe";
         warningTextEl.textContent = "Safe to travel";
-        warningSubEl.textContent = "No major weather-related route hazards are currently dominating this commute.";
+        warningSubEl.textContent = "Conditions are generally safe.";
+      }
+    }
+
+    function renderWorstSegment(points) {
+      let worst = null;
+      let worstScore = -1;
+
+      for (const p of points) {
+        const score = numericRiskScore(p.weatherCode, p.precipProb, p.wind);
+        if (score > worstScore) {
+          worstScore = score;
+          worst = p;
+        }
+      }
+
+      if (!worst) {
+        worstSegmentBoxEl.textContent = "No segment found";
+        return;
+      }
+
+      worstSegmentBoxEl.textContent = `${worst.label} at ${formatTime(worst.eta)}`;
+    }
+
+    async function computeLeaveTimeScore(route, rawPoints, baseTime) {
+      let total = 0;
+      const sample = rawPoints.slice(0, Math.min(rawPoints.length, 14));
+
+      for (const p of sample) {
+        const ratio = route.distanceMeters === 0 ? 0 : p.distanceMeters / route.distanceMeters;
+        const eta = new Date(baseTime.getTime() + ratio * route.durationSeconds * 1000);
+
+        const weather = await getWeather(p.lat, p.lon);
+        const idx = nearestWeatherIndex(weather, eta);
+
+        total += numericRiskScore(
+          weather.weather_code[idx],
+          weather.precipitation_probability[idx] || 0,
+          weather.wind_speed_10m[idx] || 0
+        );
+      }
+
+      return Math.round(total / sample.length);
+    }
+
+    async function renderBestLeaveTimes(route, rawPoints, departDate) {
+      const offsets = [-120, -60, 0, 60, 120];
+      const options = [];
+
+      for (const offset of offsets) {
+        const testTime = new Date(departDate.getTime() + offset * 60000);
+        const minDate = new Date(departInputEl.min);
+        const maxDate = new Date(departInputEl.max);
+
+        if (testTime < minDate || testTime > maxDate) continue;
+
+        const score = await computeLeaveTimeScore(route, rawPoints, testTime);
+        options.push({ time: testTime, score });
+      }
+
+      options.sort((a, b) => a.score - b.score);
+      bestLeaveTimesEl.innerHTML = "";
+
+      options.slice(0, 3).forEach((opt, index) => {
+        const row = document.createElement("div");
+        row.className = "leave-time-row";
+        row.innerHTML = `
+          <div><strong>${index === 0 ? "Best" : `Option ${index + 1}`}</strong> — ${formatDateTimeShort(opt.time)}</div>
+          <div>Risk ${opt.score}/10</div>
+        `;
+        bestLeaveTimesEl.appendChild(row);
+      });
+
+      if (options.length) {
+        departureAdviceEl.textContent = `Best near ${formatDateTimeShort(options[0].time)}`;
+      } else {
+        departureAdviceEl.textContent = "No better time found";
       }
     }
 
@@ -1182,13 +1260,15 @@
         setStatus("Checking alerts...");
         const alerts = await renderAlerts(pointsWithWeather);
 
-        setStatus("Optimizing departure...");
-        await optimizeDeparture(route, rawPoints, departDate);
+        setStatus("Calculating best leave times...");
+        await renderBestLeaveTimes(route, rawPoints, departDate);
 
         startSummaryEl.textContent = startInput;
         endSummaryEl.textContent = endInput;
         distanceSummaryEl.textContent = `${metersToMiles(route.distanceMeters).toFixed(1)} mi`;
         durationSummaryEl.textContent = formatDuration(route.durationSeconds);
+
+        renderWorstSegment(pointsWithWeather);
 
         resultsEl.classList.remove("hidden");
         initMap();
@@ -1224,6 +1304,7 @@
   </script>
 </body>
 </html>
+
 
 
 
