@@ -27,7 +27,6 @@
       --blue2: #88d0ff;
       --yellow: #f7c53a;
       --white: #eef4ff;
-      --road: #0b1d47;
 
       --shadow: 0 20px 50px rgba(17, 6, 45, 0.34);
       --r-xl: 30px;
@@ -88,9 +87,7 @@
       letter-spacing: -0.03em;
     }
 
-    .brand-title .cast {
-      color: var(--blue);
-    }
+    .brand-title .cast { color: var(--blue); }
 
     .brand-sub {
       color: var(--muted);
@@ -140,9 +137,7 @@
       letter-spacing: -0.05em;
     }
 
-    .hero h1 .accent {
-      color: var(--yellow);
-    }
+    .hero h1 .accent { color: var(--yellow); }
 
     .hero p {
       margin: 14px 0 0;
@@ -196,9 +191,7 @@
       border: 1px solid rgba(255,255,255,0.14);
     }
 
-    input::placeholder {
-      color: rgba(255,255,255,0.58);
-    }
+    input::placeholder { color: rgba(255,255,255,0.58); }
 
     .btn {
       border: none;
@@ -725,9 +718,9 @@
     async function geocode(query) {
       const url = `https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(query)}`;
       const res = await fetch(url);
-      if (!res.ok) throw new Error("Geocoding request failed.");
+      if (!res.ok) throw new Error("Location lookup failed. Try a more specific city or address.");
       const data = await res.json();
-      if (!data.length) throw new Error(`Could not find location: ${query}`);
+      if (!data.length) throw new Error(`Could not find "${query}". Try adding city/state.`);
       return {
         name: data[0].display_name,
         lat: Number(data[0].lat),
@@ -944,15 +937,27 @@
     function numericRiskScore(code, precipProb, wind) {
       let score = 1;
 
-      if ([95, 96, 99].includes(code)) score += 7;
-      if ([71, 73, 75].includes(code)) score += 6;
-      if ([66, 67].includes(code)) score += 7;
-      if ([80, 81, 82, 65].includes(code)) score += 4;
-      if ([61, 63, 51, 53, 55].includes(code)) score += 2;
-      if ([45, 48].includes(code)) score += 3;
+      if ([95].includes(code)) score += 6;
+      if ([96, 99].includes(code)) score += 8;
 
-      score += (precipProb || 0) * 0.03;
-      score += (wind || 0) * 0.08;
+      if ([71].includes(code)) score += 5;
+      if ([73].includes(code)) score += 6;
+      if ([75].includes(code)) score += 7;
+
+      if ([66].includes(code)) score += 8;
+      if ([67].includes(code)) score += 9;
+
+      if ([80].includes(code)) score += 4;
+      if ([81].includes(code)) score += 5;
+      if ([82, 65].includes(code)) score += 6;
+
+      if ([61, 63, 51, 53, 55].includes(code)) score += 3;
+
+      if ([45].includes(code)) score += 5;
+      if ([48].includes(code)) score += 6;
+
+      score += (precipProb || 0) * 0.04;
+      score += (wind || 0) * 0.10;
 
       return Math.max(1, Math.min(10, Math.round(score)));
     }
@@ -1097,9 +1102,24 @@
       let avg = scores.reduce((a, b) => a + b, 0) / Math.max(scores.length, 1);
       const max = Math.max(...scores, 0);
 
-      if (alerts.length > 0) avg += 0.8;
+      const highCount = scores.filter(s => s >= 7).length;
+      const moderateCount = scores.filter(s => s >= 4 && s < 7).length;
 
-      const overall = Math.min(10, Math.round(avg));
+      if (alerts.length > 0) avg += 1.0;
+
+      let overall = Math.round(avg);
+
+      if (highCount >= 1) overall = Math.max(overall, 5);
+      if (highCount >= 2) overall = Math.max(overall, 6);
+      if (highCount >= 3) overall = Math.max(overall, 7);
+
+      if (max >= 9) overall = Math.max(overall, 7);
+      if (max >= 10) overall = Math.max(overall, 8);
+
+      if (moderateCount >= 4) overall = Math.max(overall, 5);
+
+      overall = Math.min(10, overall);
+
       overallScoreEl.textContent = `${overall}/10`;
 
       if (overall >= 7 || max >= 9) {
@@ -1145,6 +1165,7 @@
 
     async function computeLeaveTimeScore(route, rawPoints, baseTime) {
       let total = 0;
+      let highCount = 0;
       const sample = rawPoints.slice(0, Math.min(rawPoints.length, 14));
 
       for (const p of sample) {
@@ -1154,14 +1175,22 @@
         const weather = await getWeather(p.lat, p.lon);
         const idx = nearestWeatherIndex(weather, eta);
 
-        total += numericRiskScore(
+        const score = numericRiskScore(
           weather.weather_code[idx],
           weather.precipitation_probability[idx] || 0,
           weather.wind_speed_10m[idx] || 0
         );
+
+        if (score >= 7) highCount++;
+        total += score;
       }
 
-      return Math.round(total / sample.length);
+      let overall = Math.round(total / sample.length);
+      if (highCount >= 1) overall = Math.max(overall, 5);
+      if (highCount >= 2) overall = Math.max(overall, 6);
+      if (highCount >= 3) overall = Math.max(overall, 7);
+
+      return Math.min(10, overall);
     }
 
     async function renderBestLeaveTimes(route, rawPoints, departDate) {
@@ -1237,31 +1266,54 @@
         setStatus("Fetching weather...");
         const pointsWithWeather = await Promise.all(
           pointsWithEta.map(async point => {
-            const hourly = await getWeather(point.lat, point.lon);
-            const idx = nearestWeatherIndex(hourly, point.eta);
+            try {
+              const hourly = await getWeather(point.lat, point.lon);
+              const idx = nearestWeatherIndex(hourly, point.eta);
 
-            const temp = hourly.temperature_2m[idx];
-            const precipProb = hourly.precipitation_probability[idx] ?? 0;
-            const wind = hourly.wind_speed_10m[idx] ?? 0;
-            const code = hourly.weather_code[idx];
+              const temp = hourly.temperature_2m[idx];
+              const precipProb = hourly.precipitation_probability[idx] ?? 0;
+              const wind = hourly.wind_speed_10m[idx] ?? 0;
+              const code = hourly.weather_code[idx];
 
-            return {
-              ...point,
-              temp,
-              precipProb,
-              wind,
-              weatherCode: code,
-              forecast: weatherLabel(code),
-              risk: riskFromWeather(code, precipProb, wind)
-            };
+              return {
+                ...point,
+                temp,
+                precipProb,
+                wind,
+                weatherCode: code,
+                forecast: weatherLabel(code),
+                risk: riskFromWeather(code, precipProb, wind)
+              };
+            } catch {
+              return {
+                ...point,
+                temp: 0,
+                precipProb: 0,
+                wind: 0,
+                weatherCode: 0,
+                forecast: "Weather unavailable",
+                risk: "low"
+              };
+            }
           })
         );
 
         setStatus("Checking alerts...");
-        const alerts = await renderAlerts(pointsWithWeather);
+        let alerts = [];
+        try {
+          alerts = await renderAlerts(pointsWithWeather);
+        } catch {
+          alerts = [];
+          alertsBoxEl.textContent = "Alerts unavailable";
+        }
 
         setStatus("Calculating best leave times...");
-        await renderBestLeaveTimes(route, rawPoints, departDate);
+        try {
+          await renderBestLeaveTimes(route, rawPoints, departDate);
+        } catch {
+          departureAdviceEl.textContent = "Leave-time analysis unavailable";
+          bestLeaveTimesEl.innerHTML = "";
+        }
 
         startSummaryEl.textContent = startInput;
         endSummaryEl.textContent = endInput;
@@ -1304,6 +1356,7 @@
   </script>
 </body>
 </html>
+
 
 
 
