@@ -22,6 +22,7 @@
       --low: #42d67c;
       --moderate: #f4c84d;
       --high: #ff6767;
+      --unknown: #b9c3d6;
 
       --blue: #58b8ff;
       --blue2: #88d0ff;
@@ -463,6 +464,12 @@
       border: 1px solid rgba(255,103,103,0.30);
     }
 
+    .badge.unknown {
+      background: rgba(185,195,214,0.18);
+      color: #eef4ff;
+      border: 1px solid rgba(185,195,214,0.30);
+    }
+
     @media (max-width: 1080px) {
       .hero-grid,
       .risk-panel,
@@ -595,7 +602,7 @@
             <div class="risk-title">Commute Risk Score</div>
             <div class="risk-score" id="overallScore">—</div>
             <div class="risk-label" id="overallLabel">Waiting for analysis</div>
-            <div class="note" id="overallNote" style="margin-top:10px;">Your route is scored from safer to more dangerous based on conditions across the trip.</div>
+            <div class="note" id="overallNote">Your route is scored from safer to more dangerous based on conditions across the trip.</div>
           </div>
 
           <div id="warningBox" class="warning-box safe">
@@ -643,6 +650,8 @@
 
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script>
+    const ORS_API_KEY =eyJvcmciOiI1YjNjZTM1OTc4NTExMTAwMDFjZjYyNDgiLCJpZCI6IjliNDgxZDBjZjJiMzQ5MDRiNTkwMTc1NjIyOTY2ZmQ5IiwiaCI6Im11cm11cjY0In0=;
+
     const statusEl = document.getElementById("status");
     const resultsEl = document.getElementById("results");
     const timelineEl = document.getElementById("timeline");
@@ -662,6 +671,8 @@
     const bestLeaveTimesEl = document.getElementById("bestLeaveTimes");
     const analyzeBtn = document.getElementById("analyzeBtn");
     const departInputEl = document.getElementById("depart");
+    const startInputEl = document.getElementById("start");
+    const endInputEl = document.getElementById("end");
 
     let map = null;
     let drawnLayers = [];
@@ -715,12 +726,33 @@
       });
     }
 
+    function getCurrentLocalInputValue() {
+      const now = new Date();
+      return new Date(now.getTime() - now.getTimezoneOffset() * 60000)
+        .toISOString()
+        .slice(0, 16);
+    }
+
+    function getFutureLocalInputValue(daysAhead = 14) {
+      const future = new Date(Date.now() + daysAhead * 24 * 60 * 60 * 1000);
+      return new Date(future.getTime() - future.getTimezoneOffset() * 60000)
+        .toISOString()
+        .slice(0, 16);
+    }
+
     async function geocode(query) {
       const url = `https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(query)}`;
-      const res = await fetch(url);
+      const res = await fetch(url, {
+        headers: { "Accept": "application/json" }
+      });
+
       if (!res.ok) throw new Error("Location lookup failed. Try a more specific city or address.");
+
       const data = await res.json();
-      if (!data.length) throw new Error(`Could not find "${query}". Try adding city/state.`);
+      if (!Array.isArray(data) || !data.length) {
+        throw new Error(`Could not find "${query}". Try adding city/state.`);
+      }
+
       return {
         name: data[0].display_name,
         lat: Number(data[0].lat),
@@ -729,27 +761,82 @@
     }
 
     async function getRoute(start, end) {
-      const url = `https://router.project-osrm.org/route/v1/driving/${start.lon},${start.lat};${end.lon},${end.lat}?overview=full&geometries=geojson&steps=true`;
-      const res = await fetch(url);
-      if (!res.ok) throw new Error("Route request failed.");
-      const data = await res.json();
-      if (!data.routes || !data.routes.length) throw new Error("Could not build route.");
+      if (!ORS_API_KEY || ORS_API_KEY === "PASTE_YOUR_OPENROUTESERVICE_KEY_HERE") {
+        throw new Error("Add your OpenRouteService API key in the code first.");
+      }
 
-      const route = data.routes[0];
-      const steps = (route.legs?.[0]?.steps || []).map(step => ({
-        name: step.name || "",
-        maneuverType: step.maneuver?.type || "",
-        modifier: step.maneuver?.modifier || "",
-        distance: step.distance || 0,
-        location: step.maneuver?.location || null
-      }));
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 15000);
 
-      return {
-        distanceMeters: route.distance,
-        durationSeconds: route.duration,
-        geometry: route.geometry.coordinates,
-        steps
-      };
+      try {
+        const res = await fetch(
+          "https://api.openrouteservice.org/v2/directions/driving-car/geojson",
+          {
+            method: "POST",
+            headers: {
+              "Authorization": ORS_API_KEY,
+              "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+              coordinates: [
+                [start.lon, start.lat],
+                [end.lon, end.lat]
+              ],
+              instructions: true
+            }),
+            signal: controller.signal
+          }
+        );
+
+        if (!res.ok) {
+          if (res.status === 401 || res.status === 403) {
+            throw new Error("OpenRouteService rejected your API key.");
+          }
+          throw new Error(`Route request failed (${res.status}).`);
+        }
+
+        const data = await res.json();
+        const feature = data.features?.[0];
+        if (!feature) throw new Error("No route returned.");
+
+        const geometry = feature.geometry?.coordinates;
+        if (!Array.isArray(geometry) || geometry.length < 2) {
+          throw new Error("Route geometry unavailable.");
+        }
+
+        const rawSegments = feature.properties?.segments || [];
+        const steps = rawSegments.flatMap(segment =>
+          (segment.steps || []).map(step => {
+            const wpIndex = Array.isArray(step.way_points) ? step.way_points[0] : null;
+            const coord = Number.isInteger(wpIndex) ? geometry[wpIndex] : null;
+
+            return {
+              name: step.name || step.instruction || "",
+              maneuverType: (step.instruction || "").toLowerCase(),
+              modifier: "",
+              distance: step.distance || 0,
+              location: Array.isArray(coord) ? coord : null
+            };
+          })
+        );
+
+        return {
+          distanceMeters: feature.properties?.summary?.distance || 0,
+          durationSeconds: feature.properties?.summary?.duration || 0,
+          geometry,
+          steps
+        };
+      } catch (err) {
+        if (err.name === "AbortError") {
+          throw new Error("Route request timed out. Try again.");
+        }
+        if (err.message === "Failed to fetch") {
+          throw new Error("Could not reach OpenRouteService. Check network or API key restrictions.");
+        }
+        throw err;
+      } finally {
+        clearTimeout(timeout);
+      }
     }
 
     function getPointAtDistance(coords, targetMeters) {
@@ -763,6 +850,7 @@
         if (traveled + segmentMeters >= targetMeters) {
           const remaining = targetMeters - traveled;
           const ratio = segmentMeters === 0 ? 0 : remaining / segmentMeters;
+
           return {
             lat: lat1 + (lat2 - lat1) * ratio,
             lon: lon1 + (lon2 - lon1) * ratio,
@@ -780,17 +868,26 @@
     function buildMilePoints(route) {
       const points = [];
       const totalMiles = metersToMiles(route.distanceMeters);
-      let mile = 0;
       const stepMiles = 5;
 
-      while (mile <= totalMiles) {
+      for (let mile = 0; mile <= totalMiles; mile += stepMiles) {
         const pt = getPointAtDistance(route.geometry, milesToMeters(mile));
-        points.push({ ...pt, label: `Mile ${mile}`, kind: "mile" });
-        mile += stepMiles;
+        points.push({
+          ...pt,
+          label: mile === 0 ? "Start" : `Mile ${mile}`,
+          kind: "mile"
+        });
       }
 
       const endPoint = getPointAtDistance(route.geometry, route.distanceMeters);
-      points.push({ ...endPoint, label: "Arrival", kind: "mile" });
+      const last = points[points.length - 1];
+
+      if (!last || Math.abs(last.distanceMeters - route.distanceMeters) > 10) {
+        points.push({ ...endPoint, label: "Arrival", kind: "mile" });
+      } else {
+        points[points.length - 1] = { ...last, label: "Arrival", kind: "mile" };
+      }
+
       return points;
     }
 
@@ -799,35 +896,34 @@
       let cumulative = 0;
 
       for (const step of route.steps) {
+        if (step.location) {
+          const majorType = ["turn", "merge", "fork", "roundabout", "ramp", "exit"].some(t =>
+            (step.maneuverType || "").includes(t)
+          );
+          const named = step.name && step.name.trim().length > 0;
+          const keep = majorType || named;
+
+          if (keep) {
+            const [lon, lat] = step.location;
+            points.push({
+              lat,
+              lon,
+              distanceMeters: cumulative,
+              label: step.name?.trim() || "Route change",
+              kind: "step"
+            });
+          }
+        }
+
         cumulative += step.distance || 0;
-        if (!step.location) continue;
-
-        const keep =
-          ["turn", "merge", "fork", "off ramp", "on ramp", "roundabout", "exit rotary"].includes(step.maneuverType) ||
-          (step.name && step.name.trim().length > 0);
-
-        if (!keep) continue;
-
-        const [lon, lat] = step.location;
-        const rawLabel = step.name?.trim()
-          ? step.name
-          : `${step.maneuverType} ${step.modifier || ""}`.trim();
-
-        points.push({
-          lat,
-          lon,
-          distanceMeters: cumulative,
-          label: rawLabel || "Route change",
-          kind: "step"
-        });
       }
 
       return points;
     }
 
-    function mergePoints(points, totalDistance) {
+    function dedupeNearbyPoints(points, totalDistance) {
       const sorted = points
-        .filter(p => p.distanceMeters <= totalDistance + 10)
+        .filter(p => Number.isFinite(p.distanceMeters) && p.distanceMeters <= totalDistance + 10)
         .sort((a, b) => a.distanceMeters - b.distanceMeters);
 
       const merged = [];
@@ -838,26 +934,34 @@
 
         if (!last || Math.abs(point.distanceMeters - last.distanceMeters) > threshold) {
           merged.push(point);
-        } else if (last.kind !== "mile" && point.kind === "mile") {
+        } else if (last.kind === "mile" && point.kind === "step") {
           merged[merged.length - 1] = point;
         }
       }
 
+      return merged;
+    }
+
+    function evenlySample(points, limit) {
+      if (points.length <= limit) return [...points];
+      const out = [];
+
+      for (let i = 0; i < limit; i++) {
+        const idx = Math.round(i * (points.length - 1) / (limit - 1));
+        out.push(points[idx]);
+      }
+
+      return out;
+    }
+
+    function mergePoints(points, totalDistance) {
+      const merged = dedupeNearbyPoints(points, totalDistance);
       const milePoints = merged.filter(p => p.kind === "mile");
       const stepPoints = merged.filter(p => p.kind === "step");
 
       const maxTotalPoints = 80;
       const remainingSlots = Math.max(0, maxTotalPoints - milePoints.length);
-
-      const selectedSteps = [];
-      if (stepPoints.length <= remainingSlots) {
-        selectedSteps.push(...stepPoints);
-      } else if (remainingSlots > 0) {
-        for (let i = 0; i < remainingSlots; i++) {
-          const idx = Math.floor(i * (stepPoints.length - 1) / Math.max(1, remainingSlots - 1));
-          selectedSteps.push(stepPoints[idx]);
-        }
-      }
+      const selectedSteps = evenlySample(stepPoints, remainingSlots);
 
       return [...milePoints, ...selectedSteps].sort((a, b) => a.distanceMeters - b.distanceMeters);
     }
@@ -867,12 +971,17 @@
       if (weatherCache.has(key)) return weatherCache.get(key);
 
       const url =
-        `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&hourly=temperature_2m,precipitation_probability,wind_speed_10m,weather_code&temperature_unit=fahrenheit&wind_speed_unit=mph&timezone=auto&forecast_days=14`;
+        `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}` +
+        `&hourly=temperature_2m,precipitation_probability,wind_speed_10m,weather_code` +
+        `&temperature_unit=fahrenheit&wind_speed_unit=mph&timezone=auto&forecast_days=14`;
 
       const res = await fetch(url);
       if (!res.ok) throw new Error("Weather request failed.");
+
       const data = await res.json();
-      if (!data.hourly) throw new Error("Weather data unavailable.");
+      if (!data.hourly || !Array.isArray(data.hourly.time)) {
+        throw new Error("Weather data unavailable.");
+      }
 
       weatherCache.set(key, data.hourly);
       return data.hourly;
@@ -881,10 +990,12 @@
     async function getNWSAlerts(lat, lon) {
       try {
         const url = `https://api.weather.gov/alerts/active?point=${lat},${lon}`;
-        const res = await fetch(url);
+        const res = await fetch(url, {
+          headers: { "Accept": "application/geo+json" }
+        });
         if (!res.ok) return [];
         const data = await res.json();
-        return data.features || [];
+        return Array.isArray(data.features) ? data.features : [];
       } catch {
         return [];
       }
@@ -896,12 +1007,14 @@
       let bestDiff = Infinity;
 
       for (let i = 0; i < hourly.time.length; i++) {
-        const diff = Math.abs(new Date(hourly.time[i]).getTime() - target);
+        const candidate = new Date(hourly.time[i]).getTime();
+        const diff = Math.abs(candidate - target);
         if (diff < bestDiff) {
           bestDiff = diff;
           bestIdx = i;
         }
       }
+
       return bestIdx;
     }
 
@@ -912,15 +1025,15 @@
         2: "Partly cloudy",
         3: "Overcast",
         45: "Fog",
-        48: "Fog",
-        51: "Drizzle",
+        48: "Dense fog",
+        51: "Light drizzle",
         53: "Drizzle",
         55: "Heavy drizzle",
         61: "Light rain",
         63: "Rain",
         65: "Heavy rain",
         66: "Freezing rain",
-        67: "Freezing rain",
+        67: "Heavy freezing rain",
         71: "Light snow",
         73: "Snow",
         75: "Heavy snow",
@@ -935,26 +1048,27 @@
     }
 
     function numericRiskScore(code, precipProb, wind) {
+      if (code == null) return null;
+
       let score = 1;
 
-      if ([95].includes(code)) score += 6;
-      if ([96, 99].includes(code)) score += 8;
+      if (code === 95) score += 6;
+      if (code === 96 || code === 99) score += 8;
 
-      if ([71].includes(code)) score += 5;
-      if ([73].includes(code)) score += 6;
-      if ([75].includes(code)) score += 7;
+      if (code === 71) score += 5;
+      if (code === 73) score += 6;
+      if (code === 75) score += 7;
 
-      if ([66].includes(code)) score += 8;
-      if ([67].includes(code)) score += 9;
+      if (code === 66) score += 8;
+      if (code === 67) score += 9;
 
-      if ([80].includes(code)) score += 4;
-      if ([81].includes(code)) score += 5;
-      if ([82, 65].includes(code)) score += 6;
+      if (code === 80) score += 4;
+      if (code === 81) score += 5;
+      if (code === 82 || code === 65) score += 6;
 
       if ([61, 63, 51, 53, 55].includes(code)) score += 3;
-
-      if ([45].includes(code)) score += 5;
-      if ([48].includes(code)) score += 6;
+      if (code === 45) score += 5;
+      if (code === 48) score += 6;
 
       score += (precipProb || 0) * 0.04;
       score += (wind || 0) * 0.10;
@@ -962,8 +1076,8 @@
       return Math.max(1, Math.min(10, Math.round(score)));
     }
 
-    function riskFromWeather(code, precipProb, wind) {
-      const score = numericRiskScore(code, precipProb, wind);
+    function riskFromScore(score) {
+      if (score == null) return "unknown";
       if (score >= 7) return "high";
       if (score >= 4) return "moderate";
       return "low";
@@ -976,10 +1090,12 @@
     function riskColor(risk) {
       if (risk === "high") return "#ff6767";
       if (risk === "moderate") return "#f4c84d";
+      if (risk === "unknown") return "#b9c3d6";
       return "#42d67c";
     }
 
     function buildForecastText(point) {
+      if (!point.weatherAvailable) return "Weather unavailable for this segment";
       return `${point.forecast} • ${Math.round(point.temp)}°F • ${Math.round(point.precipProb)}% precip • ${Math.round(point.wind)} mph wind`;
     }
 
@@ -1008,34 +1124,41 @@
       map.fitBounds(L.latLngBounds(latLngs).pad(0.12));
     }
 
+    function findNearestGeometryIndex(routeCoords, point) {
+      let bestIdx = 0;
+      let bestDiff = Infinity;
+
+      for (let i = 0; i < routeCoords.length; i++) {
+        const [lon, lat] = routeCoords[i];
+        const diff = haversineMiles(lat, lon, point.lat, point.lon);
+        if (diff < bestDiff) {
+          bestDiff = diff;
+          bestIdx = i;
+        }
+      }
+
+      return bestIdx;
+    }
+
     function drawRoute(routeCoords, points) {
       const routeLatLngs = routeCoords.map(([lon, lat]) => [lat, lon]);
-      const pointIndexes = points.map(point => {
-        let bestIdx = 0;
-        let bestDiff = Infinity;
-
-        for (let i = 0; i < routeCoords.length; i++) {
-          const [lon, lat] = routeCoords[i];
-          const diff = haversineMiles(lat, lon, point.lat, point.lon);
-          if (diff < bestDiff) {
-            bestDiff = diff;
-            bestIdx = i;
-          }
-        }
-        return bestIdx;
-      });
+      const pointIndexes = points.map(point => findNearestGeometryIndex(routeCoords, point));
 
       for (let i = 1; i < pointIndexes.length; i++) {
         const segStart = Math.min(pointIndexes[i - 1], pointIndexes[i]);
         const segEnd = Math.max(pointIndexes[i - 1], pointIndexes[i]);
         const segmentCoords = routeLatLngs.slice(segStart, segEnd + 1);
 
-        const segRisk =
-          points[i - 1].risk === "high" || points[i].risk === "high"
-            ? "high"
-            : points[i - 1].risk === "moderate" || points[i].risk === "moderate"
-            ? "moderate"
-            : "low";
+        if (segmentCoords.length < 2) continue;
+
+        const segRisks = [points[i - 1].risk, points[i].risk];
+        const segRisk = segRisks.includes("high")
+          ? "high"
+          : segRisks.includes("moderate")
+          ? "moderate"
+          : segRisks.includes("unknown")
+          ? "unknown"
+          : "low";
 
         addLayer(L.polyline(segmentCoords, {
           color: riskColor(segRisk),
@@ -1054,7 +1177,10 @@
             fillColor: riskColor(point.risk),
             fillOpacity: 1
           }).bindPopup(
-            `<strong>${point.label}</strong><br>${formatTime(point.eta)}<br>${titleCaseRisk(point.risk)} risk<br>${buildForecastText(point)}`
+            `<strong>${point.label}</strong><br>` +
+            `${formatTime(point.eta)}<br>` +
+            `${titleCaseRisk(point.risk)} risk<br>` +
+            `${buildForecastText(point)}`
           )
         );
       });
@@ -1069,7 +1195,7 @@
         item.innerHTML = `
           <div class="timeline-time">${formatTime(point.eta)}</div>
           <div class="timeline-main">
-            <div class="timeline-label">${point.label}</div>
+            <div class="timeline-label">${point.label} (${metersToMiles(point.distanceMeters).toFixed(1)} mi)</div>
             <div class="timeline-desc">${buildForecastText(point)}</div>
           </div>
           <div class="badge ${point.risk}">${titleCaseRisk(point.risk)}</div>
@@ -1079,33 +1205,43 @@
     }
 
     async function renderAlerts(points) {
-      const samplePoints = points.slice(0, 8);
-      const allEvents = [];
+      const samplePoints = evenlySample(points, Math.min(8, points.length));
+      const alertGroups = await Promise.all(samplePoints.map(p => getNWSAlerts(p.lat, p.lon)));
 
-      for (const p of samplePoints) {
-        const alerts = await getNWSAlerts(p.lat, p.lon);
-        alerts.forEach(a => {
-          if (a.properties && a.properties.event) allEvents.push(a.properties.event);
-        });
+      const events = [];
+      for (const alerts of alertGroups) {
+        for (const a of alerts) {
+          if (a?.properties?.event) events.push(a.properties.event);
+        }
       }
 
-      const unique = [...new Set(allEvents)];
+      const unique = [...new Set(events)];
       alertsBoxEl.textContent = unique.length ? unique.slice(0, 3).join(", ") : "No active alerts found";
       return unique;
     }
 
     function renderOverallRisk(points, alerts) {
-      const scores = points.map(p =>
-        numericRiskScore(p.weatherCode, p.precipProb, p.wind)
-      );
+      const validPoints = points.filter(p => p.weatherAvailable);
+      const scores = validPoints.map(p => p.numericScore).filter(s => s != null);
 
-      let avg = scores.reduce((a, b) => a + b, 0) / Math.max(scores.length, 1);
-      const max = Math.max(...scores, 0);
+      if (!scores.length) {
+        overallScoreEl.textContent = "—";
+        overallLabelEl.textContent = "Weather data unavailable";
+        overallNoteEl.textContent = "Commute risk could not be calculated reliably.";
+        warningBoxEl.className = "warning-box caution";
+        warningTextEl.textContent = "DATA UNAVAILABLE";
+        warningSubEl.textContent = "Some route weather data could not be retrieved.";
+        return;
+      }
 
+      let avg = scores.reduce((a, b) => a + b, 0) / scores.length;
+      const max = Math.max(...scores);
       const highCount = scores.filter(s => s >= 7).length;
       const moderateCount = scores.filter(s => s >= 4 && s < 7).length;
+      const unknownCount = points.length - validPoints.length;
 
-      if (alerts.length > 0) avg += 1.0;
+      if (alerts.length > 0) avg += 1;
+      if (unknownCount > 0) avg += 0.5;
 
       let overall = Math.round(avg);
 
@@ -1115,25 +1251,29 @@
 
       if (max >= 9) overall = Math.max(overall, 7);
       if (max >= 10) overall = Math.max(overall, 8);
-
       if (moderateCount >= 4) overall = Math.max(overall, 5);
 
       overall = Math.min(10, overall);
-
       overallScoreEl.textContent = `${overall}/10`;
 
       if (overall >= 7 || max >= 9) {
         overallLabelEl.textContent = "Extreme route conditions detected";
-        overallNoteEl.textContent = "Severe hazards appear along the route, including conditions that may make travel unsafe.";
+        overallNoteEl.textContent = unknownCount
+          ? "Severe hazards appear along the route, and some route data was unavailable."
+          : "Severe hazards appear along the route, including conditions that may make travel unsafe.";
         warningBoxEl.className = "warning-box danger";
         warningTextEl.textContent = "DO NOT TRAVEL";
         warningSubEl.textContent = "Dangerous conditions are expected along this route.";
-      } else if (overall >= 4 || max >= 7) {
+      } else if (overall >= 4 || max >= 7 || unknownCount > 0) {
         overallLabelEl.textContent = "Moderate to high commute risk";
-        overallNoteEl.textContent = "Some parts of the route may be hazardous. Use caution and monitor updates.";
+        overallNoteEl.textContent = unknownCount
+          ? "Some parts of the route may be hazardous, and some data could not be verified."
+          : "Some parts of the route may be hazardous. Use caution and monitor updates.";
         warningBoxEl.className = "warning-box caution";
         warningTextEl.textContent = "TRAVEL WITH CAUTION";
-        warningSubEl.textContent = "Expect possible delays or localized hazards.";
+        warningSubEl.textContent = unknownCount
+          ? "Expect possible hazards and incomplete route data."
+          : "Expect possible delays or localized hazards.";
       } else {
         overallLabelEl.textContent = "Low commute risk";
         overallNoteEl.textContent = "No major hazards detected across the route.";
@@ -1144,48 +1284,55 @@
     }
 
     function renderWorstSegment(points) {
-      let worst = null;
-      let worstScore = -1;
+      const validPoints = points.filter(p => p.weatherAvailable && p.numericScore != null);
 
-      for (const p of points) {
-        const score = numericRiskScore(p.weatherCode, p.precipProb, p.wind);
-        if (score > worstScore) {
-          worstScore = score;
-          worst = p;
-        }
+      if (!validPoints.length) {
+        worstSegmentBoxEl.textContent = "No verified segment found";
+        return;
       }
 
-      if (!worst) {
-        worstSegmentBoxEl.textContent = "No segment found";
-        return;
+      let worst = validPoints[0];
+      for (const p of validPoints) {
+        if (p.numericScore > worst.numericScore) worst = p;
       }
 
       worstSegmentBoxEl.textContent = `${worst.label} at ${formatTime(worst.eta)}`;
     }
 
     async function computeLeaveTimeScore(route, rawPoints, baseTime) {
-      let total = 0;
-      let highCount = 0;
       const sample = rawPoints.slice(0, Math.min(rawPoints.length, 14));
+      if (!sample.length) return null;
+
+      let total = 0;
+      let counted = 0;
+      let highCount = 0;
 
       for (const p of sample) {
         const ratio = route.distanceMeters === 0 ? 0 : p.distanceMeters / route.distanceMeters;
         const eta = new Date(baseTime.getTime() + ratio * route.durationSeconds * 1000);
 
-        const weather = await getWeather(p.lat, p.lon);
-        const idx = nearestWeatherIndex(weather, eta);
+        try {
+          const weather = await getWeather(p.lat, p.lon);
+          const idx = nearestWeatherIndex(weather, eta);
 
-        const score = numericRiskScore(
-          weather.weather_code[idx],
-          weather.precipitation_probability[idx] || 0,
-          weather.wind_speed_10m[idx] || 0
-        );
+          const score = numericRiskScore(
+            weather.weather_code[idx],
+            weather.precipitation_probability[idx] ?? 0,
+            weather.wind_speed_10m[idx] ?? 0
+          );
 
-        if (score >= 7) highCount++;
-        total += score;
+          if (score != null) {
+            if (score >= 7) highCount++;
+            total += score;
+            counted++;
+          }
+        } catch {
+        }
       }
 
-      let overall = Math.round(total / sample.length);
+      if (!counted) return null;
+
+      let overall = Math.round(total / counted);
       if (highCount >= 1) overall = Math.max(overall, 5);
       if (highCount >= 2) overall = Math.max(overall, 6);
       if (highCount >= 3) overall = Math.max(overall, 7);
@@ -1197,19 +1344,30 @@
       const offsets = [-120, -60, 0, 60, 120];
       const options = [];
 
+      const minDate = new Date(getCurrentLocalInputValue());
+      const maxDate = new Date(departInputEl.max);
+
       for (const offset of offsets) {
         const testTime = new Date(departDate.getTime() + offset * 60000);
-        const minDate = new Date(departInputEl.min);
-        const maxDate = new Date(departInputEl.max);
-
         if (testTime < minDate || testTime > maxDate) continue;
 
         const score = await computeLeaveTimeScore(route, rawPoints, testTime);
+        if (score == null) continue;
+
         options.push({ time: testTime, score });
       }
 
       options.sort((a, b) => a.score - b.score);
       bestLeaveTimesEl.innerHTML = "";
+
+      if (!options.length) {
+        const row = document.createElement("div");
+        row.className = "leave-time-row";
+        row.innerHTML = `<div>No reliable leave-time options found</div><div>—</div>`;
+        bestLeaveTimesEl.appendChild(row);
+        departureAdviceEl.textContent = "Leave-time analysis unavailable";
+        return;
+      }
 
       options.slice(0, 3).forEach((opt, index) => {
         const row = document.createElement("div");
@@ -1221,20 +1379,41 @@
         bestLeaveTimesEl.appendChild(row);
       });
 
-      if (options.length) {
-        departureAdviceEl.textContent = `Best near ${formatDateTimeShort(options[0].time)}`;
-      } else {
-        departureAdviceEl.textContent = "No better time found";
+      departureAdviceEl.textContent = `Best near ${formatDateTimeShort(options[0].time)}`;
+    }
+
+    function setDepartureLimits() {
+      departInputEl.min = getCurrentLocalInputValue();
+      departInputEl.max = getFutureLocalInputValue(14);
+
+      if (!departInputEl.value || departInputEl.value < departInputEl.min || departInputEl.value > departInputEl.max) {
+        departInputEl.value = departInputEl.min;
       }
     }
 
     async function analyzeCommute() {
-      const startInput = document.getElementById("start").value.trim();
-      const endInput = document.getElementById("end").value.trim();
+      setDepartureLimits();
+
+      const startInput = startInputEl.value.trim();
+      const endInput = endInputEl.value.trim();
       const departInput = departInputEl.value;
 
       if (!startInput || !endInput || !departInput) {
         setStatus("Fill in start location, end location, and departure time.");
+        return;
+      }
+
+      const departDate = new Date(departInput);
+      const minDate = new Date(departInputEl.min);
+      const maxDate = new Date(departInputEl.max);
+
+      if (Number.isNaN(departDate.getTime())) {
+        setStatus("Invalid departure time.");
+        return;
+      }
+
+      if (departDate < minDate || departDate > maxDate) {
+        setStatus("Departure time must be between now and the next 14 days.");
         return;
       }
 
@@ -1254,7 +1433,6 @@
           route.distanceMeters
         );
 
-        const departDate = new Date(departInput);
         const pointsWithEta = rawPoints.map(point => {
           const ratio = route.distanceMeters === 0 ? 0 : point.distanceMeters / route.distanceMeters;
           return {
@@ -1274,6 +1452,7 @@
               const precipProb = hourly.precipitation_probability[idx] ?? 0;
               const wind = hourly.wind_speed_10m[idx] ?? 0;
               const code = hourly.weather_code[idx];
+              const numericScore = numericRiskScore(code, precipProb, wind);
 
               return {
                 ...point,
@@ -1282,17 +1461,21 @@
                 wind,
                 weatherCode: code,
                 forecast: weatherLabel(code),
-                risk: riskFromWeather(code, precipProb, wind)
+                numericScore,
+                risk: riskFromScore(numericScore),
+                weatherAvailable: true
               };
             } catch {
               return {
                 ...point,
-                temp: 0,
-                precipProb: 0,
-                wind: 0,
-                weatherCode: 0,
+                temp: null,
+                precipProb: null,
+                wind: null,
+                weatherCode: null,
                 forecast: "Weather unavailable",
-                risk: "low"
+                numericScore: null,
+                risk: "unknown",
+                weatherAvailable: false
               };
             }
           })
@@ -1315,8 +1498,8 @@
           bestLeaveTimesEl.innerHTML = "";
         }
 
-        startSummaryEl.textContent = startInput;
-        endSummaryEl.textContent = endInput;
+        startSummaryEl.textContent = start.name;
+        endSummaryEl.textContent = end.name;
         distanceSummaryEl.textContent = `${metersToMiles(route.distanceMeters).toFixed(1)} mi`;
         durationSummaryEl.textContent = formatDuration(route.durationSeconds);
 
@@ -1330,7 +1513,7 @@
         renderTimeline(pointsWithWeather);
         renderOverallRisk(pointsWithWeather, alerts);
 
-        setStatus("Done.");
+        setStatus("Analysis complete.");
       } catch (err) {
         console.error(err);
         setStatus(`Error: ${err.message || "Something went wrong."}`);
@@ -1339,23 +1522,12 @@
       }
     }
 
-    function setDepartureLimits() {
-      const now = new Date();
-      const future = new Date(now.getTime() + 14 * 24 * 60 * 60 * 1000);
-
-      const localNow = new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
-      const localFuture = new Date(future.getTime() - future.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
-
-      departInputEl.min = localNow;
-      departInputEl.max = localFuture;
-      departInputEl.value = localNow;
-    }
-
     analyzeBtn.addEventListener("click", analyzeCommute);
     setDepartureLimits();
   </script>
 </body>
 </html>
+
 
 
 
